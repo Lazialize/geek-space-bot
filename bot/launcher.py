@@ -3,7 +3,7 @@ import sys
 
 from gsbot import GeekSpaceBot
 
-debug_flag = "--debug" in sys.argv
+debug_flag = os.getenv("DEBUG_MODE")
 
 def main(debug=False):
     bot = GeekSpaceBot(command_prefix="g!")
