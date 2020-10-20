@@ -9,7 +9,8 @@ class GeekSpaceBot(commands.Bot):
         intents = discord.Intents.default()
         intents.members = True
 
+        super().__init__(intents=intents, *args, **kwargs)
+
+        # Load extensions
         for extension in EXTENSIONS:
             self.load_extension(extension)
-
-        super().__init__(intents=intents, *args, **kwargs)
