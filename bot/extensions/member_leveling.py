@@ -5,7 +5,7 @@ class MemberLeveling(commands.Cog):
         self.bot = bot
 
     @commands.Cog.listener()
-    async def on_messsage(sself, message):
+    async def on_messsage(self, message):
         pass
 
     @commands.command()
