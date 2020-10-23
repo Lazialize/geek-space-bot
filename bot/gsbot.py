@@ -9,6 +9,8 @@ class GeekSpaceBot(commands.Bot):
         intents = discord.Intents.default()
         intents.members = True
 
+        self.pool = kwargs.pop("connection")
+
         super().__init__(intents=intents, *args, **kwargs)
 
         # Load extensions
