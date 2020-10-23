@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 
 EXTENSIONS = (
+    "extensions.member_leveling",
 )
 
 class GeekSpaceBot(commands.Bot):
