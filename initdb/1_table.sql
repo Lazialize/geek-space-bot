@@ -1,5 +1,5 @@
 
-CREATE TABLE IF NOT EXISTS REWARD (
+CREATE TABLE IF NOT EXISTS reward (
     id BIGSERIAL PRIMARY KEY,
     guild_id BIGINT,
     target_level INTEGER NOT NULL,
@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS REWARD (
     UNIQUE(guild_id, target_level, reward_role_id)
 );
 
-CREATE TABLE IF NOT EXISTS USER_DATA (
+CREATE TABLE IF NOT EXISTS user_data (
     id BIGSERIAL PRIMARY KEY,
     guild_id BIGINT NOT NULL,
     user_id BIGINT NOT NULL,
