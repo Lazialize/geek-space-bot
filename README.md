@@ -1,10 +1,10 @@
 # GeekSpaceBot
 
-## Introduction
-GeekSpaceBot is a discord bot for Geek-Space.
-I'm developing the bot to escape from dependency on other bots.
+## 概要
+GeekSpaceBot は Discord サーバー「Geek-Space」用の Bot です。
+他の Bot への依存をなくすために開発されています。
 
-Now, I cannot ensure safe operation because it isn't complete.
+現在開発中ですので、正常な動作は保証できません。
 
-## Feature
-There is currently none...
+## 機能
+現在はありません。
