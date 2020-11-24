@@ -1,26 +1,26 @@
-# Commit Guidelines
+# コミットガイドライン
 
-## Commit Messsage Format
+## コミットメッセージの形式
 ```
 <prefix>: <summary>
 <blank line>
 <content>
 ```
 
-If able to understand details from the summary, need not write the content that a third line.
+summary から詳細が理解できる場合（summary だけで説明がつく場合）、三行目の content への記入は必要ありません。
 
 ## Prefix
-Following prefixes are in reference to [this](https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#type):
+[これ](https://github.com/angular/angular.js/blob/master/DEVELOPERS.md#type)を参考にしています。
 
-- feat: A new feature
-- fix: A bug fix
-- docs: Documentation only changes
-- style: Changes that do not affect the meaning of the code (white-space, formatting, missing semi-colons, etc)
-- refactor: A code change that neither fixes a bug nor adds a feature
-- chore: Changes to the build process or auxiliary tools and libraries such as documentation generation
+- feat: 新機能
+- fix: バグ修正
+- docs: ドキュメントの変更のみ
+- style: コードの内容に変更を加えないが、ソースを編集するもの（空白、フォーマットの変更等）
+- refactor: コードを変更するが、バグの修正も新機能の追加も行わないもの
+- chore: ビルド処理、またはドキュメント生成などの補助ツール及びライブラリの変更
 
 ## Summary
-Briefly describe the content of the commit.
+コミットの内容を簡潔に記述する。
 
 ## Content
-Describe the the content of the commit in detail.
+コミットの内容を詳細に記述する。
