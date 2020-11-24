@@ -1,10 +1,12 @@
 
 CREATE TABLE IF NOT EXISTS reward (
     id BIGSERIAL PRIMARY KEY,
-    guild_id BIGINT,
+    hash_id TEXT NOT NULL,
+    guild_id BIGINT NOT NULL,
     target_level INTEGER NOT NULL,
     reward_role_id BIGINT NOT NULL,
-    UNIQUE(guild_id, target_level, reward_role_id)
+    UNIQUE(guild_id, target_level, reward_role_id),
+    UNIQUE(guild_id, hash_id)
 );
 
 CREATE TABLE IF NOT EXISTS user_data (
