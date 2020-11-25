@@ -142,7 +142,7 @@ class MemberLeveling(commands.Cog):
             guild_id = member.guild.id
             user_id = member.id
 
-        data = await self._fetch_user_data(guild_id, user_id, rank=True)
+        data = await self._fetch_user_data_with_rank(guild_id, user_id)
 
         if data is None:
             await ctx.send(f"{ctx.author.display_name}の情報は存在しません。")
@@ -186,10 +186,30 @@ class MemberLeveling(commands.Cog):
         await self._update_user_data(message.guild.id, message.author.id, level=level ,**kwargs)
         await self.on_level_up(message, level)
 
+    async def _fetch_user_data_with_rank(self, guild_id, user_id):
+        sql = """
+        SELECT *
+        FROM (
+            SELECT guild_id, user_id, level, own_exp, next_exp, total_exp, last_message_timestamp,
+            rank() OVER (PARTITION BY guild_id ORDER BY total_exp DESC)
+            FROM user_data
+            WHERE guild_id = $1
+        )
+        WHERE user_id = $2
+        """
+
+        async with self.pool.acquire() as con:
+            record = await con.fetchrow(sql, guild_id, user_id)
+
+        if record is None:
+            return record
+
+        return UserData(record[0], record[1], record[2], record[3], record[4], record[5], record[6], record[7])
+
     async def _fetch_user_data(self, guild_id, user_id, *, rank=False) -> Optional[UserData]:
         select_data = ["guild_id", "user_id", "level", "own_exp", "next_exp", "total_exp", "last_message_timestamp"]
         if rank:
-            select_data.append("rank() OVER (ORDER BY total_exp DESC)")
+            select_data.append("rank() OVER (PARTITION BY guild_id ORDER BY total_exp DESC)")
 
         sql = f"""
         SELECT {', '.join(select_data)}
