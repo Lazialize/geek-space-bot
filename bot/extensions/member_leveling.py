@@ -64,7 +64,7 @@ class MemberLeveling(commands.Cog):
     async def on_level_up(self, message: discord.Message, level: int):
         await message.channel.send(f"レベルアップ！ {message.author.display_name}のレベルが{level}になりました。")
 
-            sql = """
+        sql = """
         SELECT * FROM reward
         WHERE guild_id = $1 AND target_level = $2
         """
@@ -89,12 +89,12 @@ class MemberLeveling(commands.Cog):
         sql = """
         INSERT INTO reward(hash_id, guild_id, target_level, reward_role_id)
         VALUES ($1, $2, $3, $4)
-            """
+        """
 
         hashids = Hashids(salt=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         ids = hashids.encode(ctx.guild.id + role.id + target_level)
 
-            async with self.pool.acquire() as con:
+        async with self.pool.acquire() as con:
             status = await con.execute(sql, ids, ctx.guild.id, target_level, role.id)
 
         if status == "INSERT 0 1":
@@ -120,12 +120,12 @@ class MemberLeveling(commands.Cog):
 
     @level.command(name="list")
     async def _list(self, ctx):
-            sql = """
+        sql = """
         SELECT * FROM reward
         WHERE guild_id = $1
-            """
+        """
 
-            async with self.pool.acquire() as con:
+        async with self.pool.acquire() as con:
             rowdata = await con.fetch(sql, ctx.guild.id)
 
         embed = discord.Embed(title="Rewards")
@@ -145,7 +145,7 @@ class MemberLeveling(commands.Cog):
         data = await self._fetch_user_data(guild_id, user_id, rank=True)
 
         if data is None:
-            await ctx.send(f"{ctx.author.display_name}'s information is not exists")
+            await ctx.send(f"{ctx.author.display_name}の情報は存在しません。")
             return
 
         embed = discord.Embed()
