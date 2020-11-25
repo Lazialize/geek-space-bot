@@ -1,10 +1,12 @@
 import random
 from collections import namedtuple
+from datetime import datetime
 from typing import Optional
 
 import asyncio
 import discord
 from discord.ext import commands
+from hashids import Hashids
 
 UserData = namedtuple("UserData", ("guild_id", "user_id", "level", "own_exp", "next_exp", "total_exp", "last_message_timestamp", "rank"))
 
@@ -24,7 +26,7 @@ class MemberLeveling(commands.Cog):
 
         exp = 10
 
-        data = await self.fetch_user_data(message.guild.id, message.author.id)
+        data = await self._fetch_user_data(message.guild.id, message.author.id)
 
         if data is None:
             sql = """
@@ -59,9 +61,24 @@ class MemberLeveling(commands.Cog):
                 last_message_timestamp=message.create_at
             )
 
+    async def on_level_up(self, message: discord.Message, level: int):
+        await message.channel.send(f"レベルアップ！ {message.author.display_name}のレベルが{level}になりました。")
+
             sql = """
-            UPDATE user_data SET own_exp = $1, total_exp = $2, last_message_timestamp = $3
-            WHERE guild_id = $4 AND user_id = $5
+        SELECT * FROM reward
+        WHERE guild_id = $1 AND target_level = $2
+        """
+
+        async with self.pool.acquire() as con:
+            rowdata = await con.fetch(sql, message.guild.id, level)
+
+        if len(rowdata) <= 0:
+            return
+
+        rewards = map(lambda x: message.guild.get_role(x[4]), rowdata)
+
+        await message.author.add_roles(*rewards)
+
             """
 
             async with self.pool.acquire() as con:
