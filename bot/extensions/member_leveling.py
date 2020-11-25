@@ -41,6 +41,24 @@ class MemberLeveling(commands.Cog):
             return
 
         if data.next_exp - (data.own_exp + exp) > 0:
+            await self._update_user_data(
+                message.guild.id,
+                message.author.id,
+                own_exp=data.own_exp+exp,
+                total_exp=data.total_exp+exp,
+                last_message_timestamp=message.created_at
+            )
+
+        else:
+            await self.level_up(
+                message,
+                data.level + 1,
+                own_exp=(data.own_exp + exp) - data.next_exp,
+                next_exp=int(data.next_exp * 1.2),
+                total_exp=data.total_exp + exp,
+                last_message_timestamp=message.create_at
+            )
+
             sql = """
             UPDATE user_data SET own_exp = $1, total_exp = $2, last_message_timestamp = $3
             WHERE guild_id = $4 AND user_id = $5
@@ -84,7 +102,11 @@ class MemberLeveling(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    async def fetch_user_data(self, guild_id, user_id, *, rank=False) -> UserData:
+    async def level_up(self, message, level, **kwargs):
+        await self._update_user_data(message.guild.id, message.author.id, level=level ,**kwargs)
+        await self.on_level_up(message, level)
+
+    async def _fetch_user_data(self, guild_id, user_id, *, rank=False) -> Optional[UserData]:
         select_data = ["guild_id", "user_id", "level", "own_exp", "next_exp", "total_exp", "last_message_timestamp"]
         if rank:
             select_data.append("rank() OVER (ORDER BY total_exp DESC)")
@@ -102,6 +124,21 @@ class MemberLeveling(commands.Cog):
             return record
 
         return UserData(record[0], record[1], record[2], record[3], record[4], record[5], record[6], record[7] if rank else None)
+
+    async def _update_user_data(self, guild_id, user_id, **kwargs):
+        columns = []
+        count = 1
+        for k in kwargs.keys():
+            columns.append(f"{k} = ${count}")
+            count += 1
+
+        sql = f"""
+        UPDATE user_data SET {', '.join(columns)}
+        WHERE guild_id = ${count} AND user_id = ${count+1}
+        """
+
+        async with self.pool.acquire() as con:
+            await con.execute(sql, *kwargs.values(), guild_id, user_id)
 
 
 def setup(bot):
