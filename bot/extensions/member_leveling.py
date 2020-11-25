@@ -79,21 +79,60 @@ class MemberLeveling(commands.Cog):
 
         await message.author.add_roles(*rewards)
 
+    @commands.group()
+    async def level(self, ctx):
+        pass
+
+    @level.command()
+    @commands.has_permissions(manage_guild=True)
+    async def add(self, ctx, target_level: int, role: discord.Role):
+        sql = """
+        INSERT INTO reward(hash_id, guild_id, target_level, reward_role_id)
+        VALUES ($1, $2, $3, $4)
             """
 
-            async with self.pool.acquire() as con:
-                await con.execute(sql, data.own_exp + exp, data.total_exp + exp, message.created_at, message.guild.id, message.author.id)
+        hashids = Hashids(salt=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        ids = hashids.encode(ctx.guild.id + role.id + target_level)
 
+            async with self.pool.acquire() as con:
+            status = await con.execute(sql, ids, ctx.guild.id, target_level, role.id)
+
+        if status == "INSERT 0 1":
+            await ctx.send("追加しました。")
         else:
+            await ctx.send("追加に失敗しました。")
+
+    @level.command()
+    @commands.has_permissions(manage_guild=True)
+    async def remove(self, ctx, hash_id: str):
+        sql = """
+        DELETE FROM reward
+        WHERE guild_id = $1 AND hash_id = $2
+        """
+
+        async with self.pool.acquire() as con:
+            status = await con.execute(sql, ctx.guild.id, hash_id)
+
+        if status == "DELETE 1":
+            await ctx.send("削除しました。")
+        else:
+            await ctx.send("削除に失敗しました。")
+
+    @level.command(name="list")
+    async def _list(self, ctx):
             sql = """
-            UPDATE user_data SET level = $1, own_exp = $2, next_exp = $3, total_exp = $4, last_message_timestamp = $5
-            WHERE guild_id = $6 AND user_id = $7
+        SELECT * FROM reward
+        WHERE guild_id = $1
             """
 
             async with self.pool.acquire() as con:
-                await con.execute(sql, data.level + 1, (data.own_exp + exp) - data.next_exp, int(data.next_exp * 1.2), data.total_exp + exp, message.created_at, message.guild.id, message.author.id)
+            rowdata = await con.fetch(sql, ctx.guild.id)
 
-            await message.channel.send(f"Level up! {message.author.display_name}'s level is {data.level + 1}.")
+        embed = discord.Embed(title="Rewards")
+        for data in rowdata:
+            embed.add_field(name=data[1], value=f"Level: {data[3]}, Role: {data[4]}")
+
+        await ctx.send(embed=embed)
 
     @commands.command()
     async def rank(self, ctx, member: Optional[discord.Member] = None):
