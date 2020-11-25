@@ -119,6 +119,30 @@ class MemberLeveling(commands.Cog):
 
         await ctx.send(embed=embed)
 
+    @level.group()
+    @commands.is_owner()
+    async def debug(self, ctx):
+        pass
+
+    @debug.command()
+    @commands.is_owner()
+    async def add_level(self, ctx):
+        user_data = await self._fetch_user_data(ctx.guild.id, ctx.author.id)
+        await self.level_up(ctx.message, user_data.level + 1)
+
+    @debug.command()
+    @commands.is_owner()
+    async def reset(self, ctx):
+        await self._update_user_data(
+            ctx.guild.id,
+            ctx.author.id,
+            level=0,
+            own_exp=0,
+            next_exp=100,
+            total_exp=0,
+            last_message_timestamp=None
+        )
+
     async def level_up(self, message, level, **kwargs):
         await self._update_user_data(message.guild.id, message.author.id, level=level ,**kwargs)
         await self.on_level_up(message, level)
