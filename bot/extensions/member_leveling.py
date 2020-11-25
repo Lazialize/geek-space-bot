@@ -103,7 +103,7 @@ class MemberLeveling(commands.Cog):
             guild_id = member.guild.id
             user_id = member.id
 
-        data = await self.fetch_user_data(guild_id, user_id, rank=True)
+        data = await self._fetch_user_data(guild_id, user_id, rank=True)
 
         if data is None:
             await ctx.send(f"{ctx.author.display_name}'s information is not exists")
