@@ -81,7 +81,34 @@ class MemberLeveling(commands.Cog):
 
     @commands.group()
     async def level(self, ctx):
-        pass
+        if ctx.invoked_subcommand is not None:
+            return
+
+        sql = """
+        SELECT user_id, level, total_exp, last_message_timestamp,
+        rank() OVER (PARTITION BY guild_id ORDER BY total_exp DESC, last_message_timestamp ASC)
+        FROM user_data
+        WHERE guild_id = $1
+        ORDER BY total_exp DESC, last_message_timestamp ASC
+        LIMIT 10
+        """
+
+        async with self.pool.acquire() as con:
+            data = await con.fetch(sql, ctx.guild.id)
+
+        embed = discord.Embed(title="Ranking")
+        ranking_member = []
+
+        for d in data:
+            member = ctx.guild.get_member(d[0])
+            embed.add_field(name=f"第{d[4]}位", value=f"**{member.display_name}**: Level {d[1]}, Total Exp{d[2]}")
+            ranking_member.append(member)
+
+        if ctx.author not in ranking_member:
+            user_data = await self._fetch_user_data(ctx.guild.id, ctx.author.id, rank=True)
+            embed.add_field(name=f"第{user_data.rank}位", value=f"**{crx.author.display_name}**: Level {user_data.level}, Total Exp{user_data.total_exp}")
+
+        await ctx.send(embed=embed)
 
     @level.command()
     @commands.has_permissions(manage_guild=True)
