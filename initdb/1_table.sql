@@ -23,3 +23,4 @@ CREATE TABLE IF NOT EXISTS user_data (
 );
 
 CREATE INDEX exp_rank ON user_data (total_exp DESC);
+CREATE INDEX exp_rank_2 ON user_data (last_message_timestamp ASC);
