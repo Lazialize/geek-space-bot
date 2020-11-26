@@ -136,11 +136,8 @@ class MemberLeveling(commands.Cog):
 
     @commands.command()
     async def rank(self, ctx, member: Optional[discord.Member] = None):
-        guild_id = ctx.guild.id
-        user_id = ctx.author.id
-        if member is not None:
-            guild_id = member.guild.id
-            user_id = member.id
+        if member is None:
+            member = ctx.author
 
         data = await self._fetch_user_data_with_rank(guild_id, user_id)
 
