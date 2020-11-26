@@ -139,14 +139,14 @@ class MemberLeveling(commands.Cog):
         if member is None:
             member = ctx.author
 
-        data = await self._fetch_user_data_with_rank(guild_id, user_id)
+        data = await self._fetch_user_data_with_rank(member.guild.id, member.id)
 
         if data is None:
-            await ctx.send(f"{ctx.author.display_name}の情報は存在しません。")
+            await ctx.send(f"{member.display_name}の情報は存在しません。")
             return
 
         embed = discord.Embed()
-        embed.title = f"{ctx.author.display_name}'s Rank"
+        embed.title = f"{member.display_name}'s Rank"
         embed.add_field(name="Rank", value=data.rank)
         embed.add_field(name="Level", value=data.level)
         embed.add_field(name="Current Exp", value=data.own_exp)
