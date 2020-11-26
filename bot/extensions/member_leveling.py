@@ -189,7 +189,7 @@ class MemberLeveling(commands.Cog):
             SELECT *
             FROM (
                 SELECT guild_id, user_id, level, own_exp, next_exp, total_exp, last_message_timestamp,
-                rank() OVER (PARTITION BY guild_id ORDER BY total_exp DESC)
+                rank() OVER (PARTITION BY guild_id ORDER BY total_exp DESC, last_message_timestamp ASC)
                 FROM user_data
                 WHERE guild_id = $1
             ) AS GUD
