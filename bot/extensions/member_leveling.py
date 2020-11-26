@@ -194,8 +194,8 @@ class MemberLeveling(commands.Cog):
             rank() OVER (PARTITION BY guild_id ORDER BY total_exp DESC)
             FROM user_data
             WHERE guild_id = $1
-        )
-        WHERE user_id = $2
+        ) AS GUD
+        WHERE GUD.user_id = $2
         """
 
         async with self.pool.acquire() as con:
@@ -239,6 +239,9 @@ class MemberLeveling(commands.Cog):
 
         async with self.pool.acquire() as con:
             await con.execute(sql, *kwargs.values(), guild_id, user_id)
+
+    async def cog_command_error(self, ctx, error):
+        await ctx.send(error)
 
 
 def setup(bot):
