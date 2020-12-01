@@ -1,23 +1,31 @@
-import random
-from collections import namedtuple
 from datetime import datetime
-from typing import Optional
+from typing import Any, NamedTuple, Optional
 
-import asyncio
 import discord
-from discord.ext import commands
+from discord import User, Message, TextChannel, Embed
+from discord.ext.commands import Cog, Context, command, group, has_permissions, is_owner, guild_only
+from discord.member import Member
 from hashids import Hashids
+from ..gsbot import GeekSpaceBot
 
-UserData = namedtuple("UserData", ("guild_id", "user_id", "level", "own_exp", "next_exp", "total_exp", "last_message_timestamp", "rank"))
+class UserData(NamedTuple):
+    guild_id: int
+    user_id: int
+    level: int
+    own_exp: int
+    next_exp: int
+    total_exp: int
+    last_message_timestamp: datetime
+    rank: Optional[int]
 
-class MemberLeveling(commands.Cog):
-    def __init__(self, bot):
+class MemberLeveling(Cog):
+    def __init__(self, bot: GeekSpaceBot):
         self.bot = bot
         self.pool = bot.pool
 
-    @commands.Cog.listener()
-    async def on_message(self, message):
-        if message.author.bot:
+    @Cog.listener()
+    async def on_message(self, message: discord.Message):
+        if message.author.bot or not isinstance(message.channel, TextChannel):
             return
 
         ctx = await self.bot.get_context(message)
@@ -58,10 +66,14 @@ class MemberLeveling(commands.Cog):
                 own_exp=(data.own_exp + exp) - data.next_exp,
                 next_exp=int(data.next_exp * 1.2),
                 total_exp=data.total_exp + exp,
-                last_message_timestamp=message.create_at
+                last_message_timestamp=message.created_at
             )
 
-    async def on_level_up(self, message: discord.Message, level: int):
+    async def on_level_up(self, message: Message, level: int):
+        # Actually, on_level_up is triggered only when Member speak on the guild
+        if isinstance(message.author, User):
+            return
+
         await message.channel.send(f"レベルアップ！ {message.author.display_name}のレベルが{level}になりました。")
 
         sql = """
@@ -75,12 +87,19 @@ class MemberLeveling(commands.Cog):
         if len(rowdata) <= 0:
             return
 
-        rewards = map(lambda x: message.guild.get_role(x[4]), rowdata)
+        rewards = []
+        for data in rowdata:
+            role = message.guild.get_role(data[4])
+
+            if role is None:
+                continue
+
+            rewards.append(role)
 
         await message.author.add_roles(*rewards)
 
-    @commands.group()
-    async def level(self, ctx):
+    @group()
+    async def level(self, ctx: Context):
         if ctx.invoked_subcommand is not None:
             return
 
@@ -96,23 +115,23 @@ class MemberLeveling(commands.Cog):
         async with self.pool.acquire() as con:
             data = await con.fetch(sql, ctx.guild.id)
 
-        embed = discord.Embed(title="Ranking")
+        embed = Embed(title="Ranking")
         ranking_member = []
 
         for d in data:
             member = ctx.guild.get_member(d[0])
-            embed.add_field(name=f"第{d[4]}位", value=f"**{member.display_name}**: Level {d[1]}, Total Exp{d[2]}")
+            embed.add_field(name=f"第{d[4]}位", value=f"**{member.display_name}**: Level {d[1]}, Total Exp{d[2]}", inline=False)
             ranking_member.append(member)
 
         if ctx.author not in ranking_member:
             user_data = await self._fetch_user_data(ctx.guild.id, ctx.author.id, rank=True)
-            embed.add_field(name=f"第{user_data.rank}位", value=f"**{crx.author.display_name}**: Level {user_data.level}, Total Exp{user_data.total_exp}")
+            embed.add_field(name=f"第{user_data.rank}位", value=f"**{ctx.author.display_name}**: Level {user_data.level}, Total Exp{user_data.total_exp}", inline=False)
 
         await ctx.send(embed=embed)
 
     @level.command()
-    @commands.has_permissions(manage_guild=True)
-    async def add(self, ctx, target_level: int, role: discord.Role):
+    @has_permissions(manage_guild=True)
+    async def add(self, ctx: Context, target_level: int, role: discord.Role):
         sql = """
         INSERT INTO reward(hash_id, guild_id, target_level, reward_role_id)
         VALUES ($1, $2, $3, $4)
@@ -130,8 +149,8 @@ class MemberLeveling(commands.Cog):
             await ctx.send("追加に失敗しました。")
 
     @level.command()
-    @commands.has_permissions(manage_guild=True)
-    async def remove(self, ctx, hash_id: str):
+    @has_permissions(manage_guild=True)
+    async def remove(self, ctx: Context, hash_id: str):
         sql = """
         DELETE FROM reward
         WHERE guild_id = $1 AND hash_id = $2
@@ -146,7 +165,8 @@ class MemberLeveling(commands.Cog):
             await ctx.send("削除に失敗しました。")
 
     @level.command(name="list")
-    async def _list(self, ctx):
+    @guild_only()
+    async def _list(self, ctx: Context):
         sql = """
         SELECT * FROM reward
         WHERE guild_id = $1
@@ -161,10 +181,12 @@ class MemberLeveling(commands.Cog):
 
         await ctx.send(embed=embed)
 
-    @commands.command()
-    async def rank(self, ctx, member: Optional[discord.Member] = None):
+    @command()
+    @guild_only()
+    async def rank(self, ctx: Context, member: Optional[discord.Member] = None):
         if member is None:
-            member = ctx.author
+            # ctx.author is always Member because the command is executable in the guild only.
+            member = ctx.author #type: ignore
 
         data = await self._fetch_user_data(member.guild.id, member.id, rank=True)
 
@@ -174,28 +196,28 @@ class MemberLeveling(commands.Cog):
 
         embed = discord.Embed()
         embed.title = f"{member.display_name}'s Rank"
-        embed.add_field(name="Rank", value=data.rank)
-        embed.add_field(name="Level", value=data.level)
-        embed.add_field(name="Current Exp", value=data.own_exp)
-        embed.add_field(name="Next Exp", value=data.next_exp)
-        embed.add_field(name="Total Exp", value=data.total_exp)
+        embed.add_field(name="Rank", value=str(data.rank))
+        embed.add_field(name="Level", value=str(data.level))
+        embed.add_field(name="Current Exp", value=str(data.own_exp))
+        embed.add_field(name="Next Exp", value=str(data.next_exp))
+        embed.add_field(name="Total Exp", value=str(data.total_exp))
 
         await ctx.send(embed=embed)
 
     @level.group()
-    @commands.is_owner()
-    async def debug(self, ctx):
+    @is_owner()
+    async def debug(self, ctx: Context):
         pass
 
     @debug.command()
-    @commands.is_owner()
-    async def add_level(self, ctx):
+    @is_owner()
+    async def add_level(self, ctx: Context):
         user_data = await self._fetch_user_data(ctx.guild.id, ctx.author.id)
         await self.level_up(ctx.message, user_data.level + 1)
 
     @debug.command()
-    @commands.is_owner()
-    async def reset(self, ctx):
+    @is_owner()
+    async def reset(self, ctx: Context):
         await self._update_user_data(
             ctx.guild.id,
             ctx.author.id,
@@ -206,11 +228,11 @@ class MemberLeveling(commands.Cog):
             last_message_timestamp=None
         )
 
-    async def level_up(self, message, level, **kwargs):
+    async def level_up(self, message: Message, level: int, **kwargs: Any):
         await self._update_user_data(message.guild.id, message.author.id, level=level ,**kwargs)
         await self.on_level_up(message, level)
 
-    async def _fetch_user_data(self, guild_id, user_id, *, rank=False) -> Optional[UserData]:
+    async def _fetch_user_data(self, guild_id: int, user_id: int, *, rank=False) -> Optional[UserData]:
         if rank:
             sql = """
             SELECT *
@@ -237,7 +259,7 @@ class MemberLeveling(commands.Cog):
 
         return UserData(record[0], record[1], record[2], record[3], record[4], record[5], record[6], record[7] if rank else None)
 
-    async def _update_user_data(self, guild_id, user_id, **kwargs):
+    async def _update_user_data(self, guild_id: int, user_id: int, **kwargs: Any) -> bool:
         columns = []
         count = 1
         for k in kwargs.keys():
@@ -250,11 +272,16 @@ class MemberLeveling(commands.Cog):
         """
 
         async with self.pool.acquire() as con:
-            await con.execute(sql, *kwargs.values(), guild_id, user_id)
+            status: str = await con.execute(sql, *kwargs.values(), guild_id, user_id)
 
-    async def cog_command_error(self, ctx, error):
+        # The execute method returns status following format:
+        # OPERATOR_NAME OID OPERATED_RECORD_COUNT
+        # e.g. UPDATE 1
+        return status.split()[1] == "1"
+
+    async def cog_command_error(self, ctx: Context, error):
         await ctx.send(error)
 
 
-def setup(bot):
+def setup(bot: GeekSpaceBot):
     bot.add_cog(MemberLeveling(bot))

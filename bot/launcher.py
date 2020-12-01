@@ -1,16 +1,21 @@
 import os
-import sys
 
 import asyncio
 import asyncpg
-from gsbot import GeekSpaceBot
+from asyncpg.pool import Pool
+from .gsbot import GeekSpaceBot
 
-debug_flag = os.getenv("DEBUG_MODE")
+debug_flag: bool = bool(os.getenv("DEBUG_MODE"))
 
-async def create_connection_pool():
+
+async def create_connection_pool() -> Pool:
     user = os.getenv("POSTGRES_USER")
     password = os.getenv("POSTGRES_PASSWORD")
     db = os.getenv("POSTGRES_DB")
+
+    if not (user and password and db):
+        # TODO: Replace to a concrete exception.
+        raise Exception()
 
     count = 0
     while True:
@@ -24,16 +29,24 @@ async def create_connection_pool():
         except:
             await asyncio.sleep(3)
             continue
-
         break
+
+    if connection_pool is None:
+        # TODO: Replace to a concrete exception.
+        raise Exception()
+
     return connection_pool
 
 
-async def main(debug=False):
+async def main(debug: bool=False) -> None:
     con = await create_connection_pool()
-    bot = GeekSpaceBot(command_prefix="g!", connection=con)
+    bot = GeekSpaceBot(command_prefix="g!", connection=con) # type: ignore
 
     token = os.getenv("DISCORD_BOT_DEBUG_TOKEN") if debug else os.getenv("DISCORD_BOT_RELEASE_TOKEN")
+
+    if token is None:
+        # TODO: Replace to a concrete exception
+        raise Exception()
 
     await bot.start(token)
 
